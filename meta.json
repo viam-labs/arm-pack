@@ -2,7 +2,7 @@
   "$schema": "https://dl.viam.dev/module.schema.json",
   "module_id": "viam:arm-pack",
   "visibility": "public",
-  "url": "",
+  "url": "https://github.com/viam-labs/arm-pack",
   "description": "Modular generic service: action-sequence-service",
   "applications": null,
   "markdown_link": "README.md",
@@ -12,11 +12,6 @@
     "build": "make module.tar.gz",
     "setup": "make setup",
     "path": "module.tar.gz",
-    "arch": [
-      "linux/amd64",
-      "linux/arm64",
-      "darwin/arm64",
-      "windows/amd64"
-    ]
+    "arch": ["linux/amd64", "linux/arm64", "darwin/arm64", "windows/amd64"]
   }
 }
