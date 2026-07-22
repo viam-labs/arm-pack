@@ -1,8 +1,8 @@
 package main
 
 import (
-	"context"
 	"armpack"
+	"context"
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/resource"
 	generic "go.viam.com/rdk/services/generic"
