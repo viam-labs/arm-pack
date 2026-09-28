@@ -2,7 +2,10 @@ module armpack
 
 go 1.25.10
 
-require go.viam.com/rdk v1.1.0
+require (
+	go.viam.com/api v0.1.574
+	go.viam.com/rdk v1.1.0
+)
 
 require (
 	cel.dev/expr v0.25.2 // indirect
@@ -184,7 +187,6 @@ require (
 	go.uber.org/goleak v1.3.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
-	go.viam.com/api v0.1.574 // indirect
 	go.viam.com/test v1.2.4 // indirect
 	go.viam.com/utils v0.8.1 // indirect
 	go4.org/unsafe/assume-no-moving-gc v0.0.0-20230525183740-e7c30c78aeb2 // indirect
