@@ -1,17 +1,17 @@
 # Module arm-pack
 
 A collection of models for building robot arm applications on Viam. It
-includes a service for scripting pick-and-place style action sequences and an
-arm wrapper for jogging an arm with a dial input.
+includes a service for scripting pick-and-place style action sequences and a
+service for jogging an arm with dial input.
 
 ## Models
 
 This module provides the following models:
 
-| Model                                                                                 | API                   | Description                                                                                                                                                                       |
-| ------------------------------------------------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`viam:arm-pack:action-sequence-service`](#model-viamarm-packaction-sequence-service) | `rdk:service:generic` | Runs a configured, ordered list of gripper `grab`/`open` and saved-position `move_position` actions when triggered with `DoCommand`.                                              |
-| [`viam:arm-pack:dial-arm-control`](#model-viamarm-packdial-arm-control)               | `rdk:component:arm`   | Wraps an existing arm, forwarding all arm API calls, and adds `DoCommand` commands to jog the end effector along X, Y or Z in fixed millimeter steps driven by a dial's position. |
+| Model                                                                                 | API                   | Description                                                                                                                                                            |
+| ------------------------------------------------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`viam:arm-pack:action-sequence-service`](#model-viamarm-packaction-sequence-service) | `rdk:service:generic` | Runs a configured, ordered list of gripper `grab`/`open` and saved-position `move_position` actions when triggered with `DoCommand`.                                   |
+| [`viam:arm-pack:dial-control-motion`](#model-viamarm-packdial-control-motion)         | `rdk:service:generic` | Translates dial input into relative end-effector translations and rotations of a configured arm, with speed-based acceleration and a translation/rotation mode toggle. |
 
 ## Model: `viam:arm-pack:action-sequence-service`
 
@@ -113,18 +113,21 @@ On success, `DoCommand` returns:
 }
 ```
 
-## Model: `viam:arm-pack:dial-arm-control`
+## Model: `viam:arm-pack:dial-control-motion`
 
-An `arm` component that wraps another configured arm and adds dial-driven
-Cartesian jogging. Every standard arm API call (`MoveToPosition`,
-`JointPositions`, `Stop`, `Kinematics`, …) is forwarded unchanged to the
-underlying arm, so this model can be used anywhere a regular arm is expected.
+A generic service that turns dial input (for example a Stream Deck dial) into
+relative motion of a configured arm's end effector. It can translate the end
+effector along the base frame's X, Y and Z axes or along the end effector's
+current pointing direction, and rotate it in place around its own local X, Y
+and Z axes.
 
-On top of that, `DoCommand` accepts `dial_move_x`, `dial_move_y` and
-`dial_move_z` commands. Each one nudges the arm's end effector a fixed number
-of millimeters along the matching axis of the arm's base frame while keeping its
-current orientation. This makes it easy to drive an arm from a rotary encoder,
-knob or other "dial" input.
+The dial reports absolute positions through `DoCommand`. Each call infers a
+direction from the change since the previous reading and queues one signed
+step. A background loop flushes the queued steps to the arm every
+`drain_interval_ms` in a single `MoveToPosition` call, so detents that arrive
+between flushes are combined. Turning the dial faster raises a per-axis
+acceleration multiplier, so quick spins cover more distance per detent than
+slow, precise turns.
 
 ### Configuration
 
@@ -132,11 +135,24 @@ The following attribute template can be used to configure this model:
 
 ```json
 {
-  "arm": "<string>",
+  "arm_name": "<string>",
   "dial_move_x_mm": <float>,
   "dial_move_y_mm": <float>,
   "dial_move_z_mm": <float>,
-  "dial_max_position": <float>
+  "dial_move_orientation_mm": <float>,
+  "dial_move_rx_deg": <float>,
+  "dial_move_ry_deg": <float>,
+  "dial_move_rz_deg": <float>,
+  "dial_max_position": <float>,
+  "drain_interval_ms": <int>,
+  "accel_threshold_count": <float>,
+  "accel_max_multiplier": <float>,
+  "accel_exponent": <float>,
+  "accel_smoothing_alpha": <float>,
+  "accel_rotation_threshold_count": <float>,
+  "accel_rotation_max_multiplier": <float>,
+  "accel_rotation_exponent": <float>,
+  "accel_rotation_smoothing_alpha": <float>
 }
 ```
 
@@ -144,74 +160,107 @@ The following attribute template can be used to configure this model:
 
 The following attributes are available for this model:
 
-| Name                | Type   | Inclusion | Description                                                                                               |
-| ------------------- | ------ | --------- | --------------------------------------------------------------------------------------------------------- |
-| `arm`               | string | Required  | Name of the configured `arm` component to wrap. Added as a required dependency.                           |
-| `dial_move_x_mm`    | float  | Optional  | Step size in millimeters for each `dial_move_x` command. Defaults to `1`.                                 |
-| `dial_move_y_mm`    | float  | Optional  | Step size in millimeters for each `dial_move_y` command. Defaults to `1`.                                 |
-| `dial_move_z_mm`    | float  | Optional  | Step size in millimeters for each `dial_move_z` command. Defaults to `1`.                                 |
-| `dial_max_position` | float  | Optional  | Highest value the dial reports before wrapping back to `0`. Used to detect wraparound. Defaults to `100`. |
+| Name                             | Type   | Inclusion | Description                                                                                                                                   |
+| -------------------------------- | ------ | --------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `arm_name`                       | string | Required  | Name of the configured `arm` component to move. Added as a required dependency.                                                               |
+| `dial_move_x_mm`                 | float  | Optional  | Millimeters per detent along the base frame X axis. Defaults to `1`.                                                                          |
+| `dial_move_y_mm`                 | float  | Optional  | Millimeters per detent along the base frame Y axis. Defaults to `1`.                                                                          |
+| `dial_move_z_mm`                 | float  | Optional  | Millimeters per detent along the base frame Z axis. Defaults to `1`.                                                                          |
+| `dial_move_orientation_mm`       | float  | Optional  | Millimeters per detent along the end effector's current orientation vector (moving "forward/back" along the tool). Defaults to `1`.           |
+| `dial_move_rx_deg`               | float  | Optional  | Degrees per detent around the end effector's local X axis. Defaults to `1`.                                                                   |
+| `dial_move_ry_deg`               | float  | Optional  | Degrees per detent around the end effector's local Y axis. Defaults to `1`.                                                                   |
+| `dial_move_rz_deg`               | float  | Optional  | Degrees per detent around the end effector's local Z axis. Defaults to `1`.                                                                   |
+| `dial_max_position`              | float  | Optional  | Highest value the dial reports before wrapping back to `0`. Used to detect wraparound and saturation. Defaults to `100`.                      |
+| `drain_interval_ms`              | int    | Optional  | How often queued steps are flushed to the arm, in milliseconds. Defaults to `20` (50 Hz).                                                     |
+| `accel_threshold_count`          | float  | Optional  | Smoothed detents per drain window at which acceleration starts. Below it the multiplier is `1`. Defaults to `1`.                              |
+| `accel_max_multiplier`           | float  | Optional  | Upper bound on the acceleration multiplier. Defaults to `10`.                                                                                 |
+| `accel_exponent`                 | float  | Optional  | Exponent of the acceleration curve; higher values ramp up more sharply. Defaults to `1.5`.                                                    |
+| `accel_smoothing_alpha`          | float  | Optional  | EWMA smoothing factor in `(0, 1]` for the detent rate. `1` reacts instantly; smaller values ramp and decay more gradually. Defaults to `0.4`. |
+| `accel_rotation_threshold_count` | float  | Optional  | Override of `accel_threshold_count` for rotation axes. Falls back to the translation value.                                                   |
+| `accel_rotation_max_multiplier`  | float  | Optional  | Override of `accel_max_multiplier` for rotation axes. Falls back to the translation value.                                                    |
+| `accel_rotation_exponent`        | float  | Optional  | Override of `accel_exponent` for rotation axes. Falls back to the translation value.                                                          |
+| `accel_rotation_smoothing_alpha` | float  | Optional  | Override of `accel_smoothing_alpha` for rotation axes. Falls back to the translation value.                                                   |
+
+The acceleration multiplier for an axis is computed every drain window as:
+
+```
+smoothed   = alpha * detents_this_window + (1 - alpha) * smoothed_previous
+multiplier = clamp((smoothed / threshold) ^ exponent, 1, max_multiplier)
+```
 
 #### Example Configuration
 
 ```json
 {
-  "arm": "my-arm",
-  "dial_move_x_mm": 5,
-  "dial_move_y_mm": 5,
-  "dial_move_z_mm": 2,
-  "dial_max_position": 100
+  "arm_name": "my-arm",
+  "dial_move_x_mm": 2,
+  "dial_move_y_mm": 2,
+  "dial_move_z_mm": 1,
+  "dial_move_rx_deg": 2,
+  "dial_move_ry_deg": 2,
+  "dial_move_rz_deg": 2,
+  "accel_max_multiplier": 8
 }
 ```
 
 ### DoCommand
 
-`DoCommand` accepts exactly one of `dial_move_x`, `dial_move_y` or
-`dial_move_z`. The value controls how the direction of the move is chosen:
+#### Dial moves
 
-- **Numeric value (dial position)** — the value is treated as the dial's
-  current absolute position. The first command for an axis only records the
-  position and does not move the arm. Each later command compares the new
-  position to the previous one and moves the arm one step in the positive
-  direction if the dial turned up, or the negative direction if it turned down.
-  A jump larger than half of `dial_max_position` is treated as the dial
-  wrapping around (for example `100 → 0` counts as turning up).
-- **Non-numeric value (for example `true`)** — the arm moves one step in the
-  positive direction along that axis.
+`DoCommand` accepts one of the following keys, each with the dial's current
+absolute position as a number:
 
-The step size comes from the matching `dial_move_<axis>_mm` attribute. Each
-axis tracks its dial position independently.
+| Command                 | Motion                                                          |
+| ----------------------- | --------------------------------------------------------------- |
+| `dial_move_x`           | Translate along base X (rotate around local X in rotation mode) |
+| `dial_move_y`           | Translate along base Y (rotate around local Y in rotation mode) |
+| `dial_move_z`           | Translate along base Z (rotate around local Z in rotation mode) |
+| `dial_move_orientation` | Translate along the end effector's orientation vector           |
+| `dial_move_rx`          | Rotate around the end effector's local X axis                   |
+| `dial_move_ry`          | Rotate around the end effector's local Y axis                   |
+| `dial_move_rz`          | Rotate around the end effector's local Z axis                   |
 
-#### Example DoCommand
+How each reading is interpreted:
 
-Report a dial position of `42` for the X axis:
+- The first reading for an axis only records the position and does not move
+  the arm.
+- A later reading queues one step in the positive direction if the dial turned
+  up, or the negative direction if it turned down.
+- A jump larger than half of `dial_max_position` is treated as the dial
+  wrapping around (for example `98 → 1` counts as turning up).
+- Repeating the same value is a no-op, unless the dial is pinned at `0` or
+  `dial_max_position` while still being turned in that direction; then motion
+  continues in the last direction.
+
+Example:
 
 ```json
-{
-  "dial_move_x": 42
-}
+{ "dial_move_x": 42 }
 ```
 
-Move one step in +Z:
-
-```json
-{
-  "dial_move_z": true
-}
-```
-
-#### Responses
-
-When a dial position is recorded for the first time:
+Responses:
 
 ```json
 { "status": "dial_initialized", "axis": "x", "position": 42 }
+{ "status": "queued", "axis": "x", "step": -2 }
+{ "status": "no_change", "axis": "x", "position": 42 }
 ```
 
-After a move (`mm` is negative when the arm moved in the negative direction):
+`step` is the signed base step (mm or degrees) before acceleration. The arm
+moves asynchronously on the next drain tick; movement errors are logged rather
+than returned.
 
-```json
-{ "status": "moved", "axis": "x", "mm": -5 }
-```
+#### Axis mode
+
+In `rotation` mode, `dial_move_x`, `dial_move_y` and `dial_move_z` are routed
+to `rx`, `ry` and `rz`, so the same three dials can switch between translating
+and rotating. `dial_move_orientation` and the explicit `rx`/`ry`/`rz` commands
+are unaffected. The service starts in `translation` mode.
+
+| Command                              | Response                                           |
+| ------------------------------------ | -------------------------------------------------- |
+| `{ "toggle_axis_mode": true }`       | `{ "status": "toggled", "axis_mode": "rotation" }` |
+| `{ "set_axis_mode": "translation" }` | `{ "status": "set", "axis_mode": "translation" }`  |
+| `{ "get_axis_mode": true }`          | `{ "axis_mode": "translation" }`                   |
 
 Any other command returns an `unknown command` error.

@@ -3,7 +3,7 @@
   "module_id": "viam:arm-pack",
   "visibility": "public",
   "url": "https://github.com/viam-labs/arm-pack",
-  "description": "Robot arm building blocks: an action-sequence generic service and a dial-controlled arm wrapper",
+  "description": "Robot arm building blocks: an action-sequence generic service and a dial-driven arm jogging service",
   "models": [
     {
       "api": "rdk:service:generic",
@@ -12,10 +12,10 @@
       "markdown_link": "README.md#model-viamarm-packaction-sequence-service"
     },
     {
-      "api": "rdk:component:arm",
-      "model": "viam:arm-pack:dial-arm-control",
-      "short_description": "Wraps an arm and adds DoCommand-driven X/Y/Z jogging from a dial input.",
-      "markdown_link": "README.md#model-viamarm-packdial-arm-control"
+      "api": "rdk:service:generic",
+      "model": "viam:arm-pack:dial-control-motion",
+      "short_description": "Translates dial inputs into relative arm translations and rotations, with speed-based acceleration.",
+      "markdown_link": "README.md#model-viamarm-packdial-control-motion"
     }
   ],
   "applications": null,
