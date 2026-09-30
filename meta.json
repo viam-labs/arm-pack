@@ -3,7 +3,21 @@
   "module_id": "viam:arm-pack",
   "visibility": "public",
   "url": "https://github.com/viam-labs/arm-pack",
-  "description": "Modular generic service: action-sequence-service",
+  "description": "Robot arm building blocks: an action-sequence generic service and a dial-driven arm jogging service",
+  "models": [
+    {
+      "api": "rdk:service:generic",
+      "model": "viam:arm-pack:action-sequence-service",
+      "short_description": "Runs a configured sequence of gripper and saved-position actions when triggered via DoCommand.",
+      "markdown_link": "README.md#model-viamarm-packaction-sequence-service"
+    },
+    {
+      "api": "rdk:service:generic",
+      "model": "viam:arm-pack:dial-control-motion",
+      "short_description": "Translates dial inputs into relative arm translations and rotations, with speed-based acceleration.",
+      "markdown_link": "README.md#model-viamarm-packdial-control-motion"
+    }
+  ],
   "applications": null,
   "markdown_link": "README.md",
   "entrypoint": "bin/arm-pack",
@@ -12,6 +26,11 @@
     "build": "make module.tar.gz",
     "setup": "make setup",
     "path": "module.tar.gz",
-    "arch": ["linux/amd64", "linux/arm64", "darwin/arm64", "windows/amd64"]
+    "arch": [
+      "linux/amd64",
+      "linux/arm64",
+      "darwin/arm64",
+      "windows/amd64"
+    ]
   }
 }
