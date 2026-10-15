@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/golang/geo v0.0.0-20230421003525-6adc56603217
-	go.viam.com/rdk v1.11.0
+	go.viam.com/rdk v1.12.0
 	gonum.org/v1/gonum v0.17.0
 )
 
