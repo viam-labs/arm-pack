@@ -2,7 +2,6 @@ package armpack
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"go.viam.com/rdk/components/gripper"
@@ -14,7 +13,6 @@ import (
 
 var (
 	ActionSequenceService = resource.NewModel("viam", "arm-pack", "action-sequence-service")
-	errUnimplemented      = errors.New("unimplemented")
 )
 
 const (
@@ -152,7 +150,7 @@ func NewActionSequenceService(ctx context.Context, deps resource.Dependencies, n
 			if _, ok := grippers[gripperName]; ok {
 				continue
 			}
-			g, err := gripper.FromDependencies(deps, gripperName)
+			g, err := gripper.FromProvider(deps, gripperName)
 			if err != nil {
 				cancelFunc()
 				return nil, fmt.Errorf("could not get gripper %q from dependencies: %w", gripperName, err)
@@ -163,7 +161,7 @@ func NewActionSequenceService(ctx context.Context, deps resource.Dependencies, n
 			if _, ok := switches[switchName]; ok {
 				continue
 			}
-			sw, err := toggleswitch.FromDependencies(deps, switchName)
+			sw, err := toggleswitch.FromProvider(deps, switchName)
 			if err != nil {
 				cancelFunc()
 				return nil, fmt.Errorf("could not get switch %q from dependencies: %w", switchName, err)
